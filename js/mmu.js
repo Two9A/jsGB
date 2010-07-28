@@ -50,7 +50,15 @@ MMU = {
     {
       // ROM bank 0
       case 0x0000:
-        if(MMU._inbios && addr<0x0100) return MMU._bios[addr];
+        if(MMU._inbios)
+	{
+	  if(addr<0x0100) return MMU._bios[addr];
+	  else if(Z80._r.pc == 0x0100)
+	  {
+	    MMU._inbios = 0;
+	    LOG.out('MMU', 'Leaving BIOS.');
+	  }
+	}
 	else
 	{
 	  return MMU._rom.charCodeAt(addr);
@@ -95,12 +103,14 @@ MMU = {
           // Zeropage RAM, I/O, interrupts
 	  case 0xF00:
 	    if(addr == 0xFFFF) { return MMU._ie; }
+	    else if(addr > 0xFF7F) { return MMU._zram[addr&0x7F]; }
 	    else switch(addr&0xF0)
 	    {
 	      case 0x00:
 	        switch(addr&0xF)
 		{
-		  case 15: return MMU._if;
+		  case 0: return KEY.rb();    // JOYP
+		  case 15: return MMU._if;    // Interrupt flags
 		  default: return 0;
 		}
 
@@ -109,10 +119,6 @@ MMU = {
 
               case 0x40: case 0x50: case 0x60: case 0x70:
 	        return GPU.rb(addr);
-
-	      case 0x80: case 0x90: case 0xA0: case 0xB0:
-	      case 0xC0: case 0xD0: case 0xE0: case 0xF0:
-	        return MMU._zram[addr&0x7F];
 	    }
 	}
     }
@@ -172,12 +178,14 @@ MMU = {
           // Zeropage RAM, I/O, interrupts
 	  case 0xF00:
 	    if(addr == 0xFFFF) { MMU._ie = val; }
+	    else if(addr > 0xFF7F) { MMU._zram[addr&0x7F]=val; }
 	    else switch(addr&0xF0)
 	    {
 	      case 0x00:
 	        switch(addr&0xF)
 		{
-		  case 15: MMU._if = val;
+		  case 0: KEY.wb(val); break;
+		  case 15: MMU._if = val; break;
 		}
 	        break;
 
@@ -186,11 +194,6 @@ MMU = {
 
               case 0x40: case 0x50: case 0x60: case 0x70:
 	        GPU.wb(addr,val);
-		break;
-
-	      case 0x80: case 0x90: case 0xA0: case 0xB0:
-	      case 0xC0: case 0xD0: case 0xE0: case 0xF0:
-	        MMU._zram[addr&0x7F]=val;
 		break;
 	    }
 	}

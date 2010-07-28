@@ -5,6 +5,7 @@
   <script type="text/javascript" src="js/log.js"></script>
   <script type="text/javascript" src="js/gpu.js"></script>
   <script type="text/javascript" src="js/mmu.js"></script>
+  <script type="text/javascript" src="js/key.js"></script>
   <script type="text/javascript" src="js/z80.js"></script>
   <script type="text/javascript" src="js/tabs.js"></script>
   <style type="text/css">
@@ -17,7 +18,7 @@ ul#ops { float:left; list-style:none inside; }
 ul#ops li { cursor:pointer; }
 table#reg { font-size:11px; font-family:Lucida Console, Bitstream Vera Sans Mono, monospace; line-height:1em; }
 table#reg td.regname { text-align:right; }
-ul.tablist { list-style: none inside; position:relative; bottom:-2px; }
+ul.tablist { list-style: none inside; position:relative; bottom:-1px; }
 ul.tablist li { display: block; float: left; background: #444; border-top: 1px solid #444; border-bottom: 1px solid white; padding: 3px 0.5em; margin-right: 2px; cursor: pointer; font-size:9px; }
 ul.tablist li.tab_hi { border-left: 1px solid white; border-right: 1px solid white; border-top: 1px solid white; border-bottom: 1px solid black; background: black; }
 p#op_brk { margin-left: 165px; }
@@ -65,19 +66,19 @@ jsGB = {
 
   frame: function() {
     var fclock = Z80._clock.t+70224;
-    var brk;
+    var brk = document.getElementById('breakpoint').value;
     do {
       if(Z80._r.ime && MMU._ie && MMU._if)
       {
         Z80._halt=0; Z80._r.ime=0;
-        if((MMU._ie&1) && (MMU._if&1))
+        if((MMU._ie&MMU._if)&1)
         {
           MMU._if &= 0xFE; Z80._ops.RST40();
         }
       }
       else
       {
-        if(Z80._halt) { Z80._r.m=1; Z80._r.t=4; }
+        if(Z80._halt) { Z80._r.m=1; }
         else
         {
           Z80._r.r = (Z80._r.r+1) & 127;
@@ -85,14 +86,8 @@ jsGB = {
           Z80._r.pc &= 65535;
         }
       }
-      Z80._clock.m += Z80._r.m; Z80._clock.t += Z80._r.t;
-      if(MMU._inbios && Z80._r.pc == 0x0100)
-      {
-        MMU._inbios=0;
-        LOG.out('MAIN', 'Leaving BIOS.');
-      }
+      Z80._clock.m += Z80._r.m; Z80._clock.t += (Z80._r.m*4);
       GPU.checkline();
-      brk = document.getElementById('breakpoint').value;
       if(brk && parseInt(brk,16))
       {
         if(Z80._r.pc==parseInt(brk,16))
@@ -109,7 +104,7 @@ jsGB = {
   },
   
   reset: function() {
-    LOG.reset(); GPU.reset(); MMU.reset(); Z80.reset();
+    LOG.reset(); GPU.reset(); MMU.reset(); Z80.reset(); KEY.reset();
     MMU.load('tests/ttt.gb');
   
     document.getElementById('op_reset').onclick=jsGB.reset;
@@ -146,6 +141,7 @@ jsGB = {
     var c = Z80._r.c.toString(16); if(c.length==1) c='0'+c;
     var d = Z80._r.d.toString(16); if(d.length==1) d='0'+d;
     var e = Z80._r.e.toString(16); if(e.length==1) e='0'+e;
+    var f = Z80._r.f.toString(16); if(f.length==1) f='0'+f;
     var hl = (Z80._r.h<<8)+Z80._r.l; hl=hl.toString(16); if(hl.length<4) { p=''; for(i=4;i>hl.length;i--) p+='0'; hl=p+hl; }
     var pc = Z80._r.pc.toString(16); if(pc.length<4) { p=''; for(i=4;i>pc.length;i--) p+='0'; pc=p+pc; }
     var sp = Z80._r.sp.toString(16); if(sp.length<4) { p=''; for(i=4;i>sp.length;i--) p+='0'; sp=p+sp; }
@@ -155,6 +151,7 @@ jsGB = {
     document.getElementById('reg_c').innerHTML = c;
     document.getElementById('reg_d').innerHTML = d;
     document.getElementById('reg_e').innerHTML = e;
+    document.getElementById('reg_f').innerHTML = f;
     document.getElementById('reg_hl').innerHTML = hl;
     document.getElementById('reg_pc').innerHTML = pc;
     document.getElementById('reg_sp').innerHTML = sp;
@@ -171,7 +168,7 @@ jsGB = {
     }
     else
     {
-      if(Z80._halt) { Z80._r.m=1; Z80._r.t=4; }
+      if(Z80._halt) { Z80._r.m=1; }
       else
       {
         Z80._r.r = (Z80._r.r+1) & 127;
@@ -179,12 +176,7 @@ jsGB = {
         Z80._r.pc &= 65535;
       }
     }
-    Z80._clock.m += Z80._r.m; Z80._clock.t += Z80._r.t;
-    if(MMU._inbios && Z80._r.pc == 0x0100)
-    {
-      MMU._inbios=0;
-      LOG.out('MAIN', 'Leaving BIOS.');
-    }
+    Z80._clock.m += Z80._r.m; Z80._clock.t += (Z80._r.m*4);
     GPU.checkline();
     if(Z80._stop)
     {
@@ -195,6 +187,8 @@ jsGB = {
 };
 
 window.onload = jsGB.reset;
+window.onkeydown = KEY.keydown;
+window.onkeyup = KEY.keyup;
   </script>
  </body>
 </html>

@@ -14,7 +14,8 @@ Current status:
   ops will be missing.
 - Graphics: Background tile maps emulated, sprites and windows missing.
 - Sound: Missing.
-- Keypad, interrupts, timers: Missing.
+- Keypad: Untested.
+- Interrupts, timers: Missing.
 
 Tested browsers:
 
