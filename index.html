@@ -8,6 +8,7 @@
   <script type="text/javascript" src="js/key.js"></script>
   <script type="text/javascript" src="js/z80.js"></script>
   <script type="text/javascript" src="js/tabs.js"></script>
+  <script type="text/javascript" src="js/xhr.js"></script>
   <style type="text/css">
 * { margin:0; padding: 0; }
 body { padding: 5px; background-color: black; color: white; font-family:Arial, Helvetica, sans-serif; font-size:0.82em; }
@@ -39,7 +40,7 @@ input#breakpoint { background:black; color:white; border:1px solid white; width:
   <div class="tab" id="tab_message"><div id="msg"></div></div>
   <div class="tab" id="tab_registers">
    <table id="reg">
-    <tr><td class="regname">A</td><td id="reg_a"></td></tr>
+    <tr><td class="regname">A</td><td id="reg_a"></td><td class="regname">OP</td><td id="reg_op"></td></tr>
     <tr><td class="regname">B</td><td id="reg_b"></td></tr>
     <tr><td class="regname">C</td><td id="reg_c"></td></tr>
     <tr><td class="regname">D</td><td id="reg_d"></td></tr>
@@ -63,6 +64,7 @@ input#breakpoint { background:black; color:white; border:1px solid white; width:
   <script type="text/javascript">
 jsGB = {
   run_interval: 0,
+  trace: '',
 
   frame: function() {
     var fclock = Z80._clock.t+70224;
@@ -86,6 +88,7 @@ jsGB = {
           Z80._r.pc &= 65535;
         }
       }
+      //jsGB.dbgtrace();
       Z80._clock.m += Z80._r.m; Z80._clock.t += (Z80._r.m*4);
       GPU.checkline();
       if(brk && parseInt(brk,16))
@@ -113,6 +116,7 @@ jsGB = {
     document.getElementById('op_step').onclick=jsGB.step;
   
     jsGB.dbgupdate();
+    jsGB.trace = '';
     tabMagic.init();
   
     LOG.out('MAIN', 'Reset.');
@@ -132,6 +136,8 @@ jsGB = {
   
     document.getElementById('op_run').innerHTML = 'Run';
     document.getElementById('op_run').onclick = jsGB.run;
+
+    //XHR.connect('/log.php', {trace:jsGB.trace}, {success:function(x){}});
   },
   
   dbgupdate: function() {
@@ -145,6 +151,7 @@ jsGB = {
     var hl = (Z80._r.h<<8)+Z80._r.l; hl=hl.toString(16); if(hl.length<4) { p=''; for(i=4;i>hl.length;i--) p+='0'; hl=p+hl; }
     var pc = Z80._r.pc.toString(16); if(pc.length<4) { p=''; for(i=4;i>pc.length;i--) p+='0'; pc=p+pc; }
     var sp = Z80._r.sp.toString(16); if(sp.length<4) { p=''; for(i=4;i>sp.length;i--) p+='0'; sp=p+sp; }
+    var op = MMU.rb(Z80._r.pc).toString(16); if(op.length==1) op='0'+op;
   
     document.getElementById('reg_a').innerHTML = a;
     document.getElementById('reg_b').innerHTML = b;
@@ -155,8 +162,24 @@ jsGB = {
     document.getElementById('reg_hl').innerHTML = hl;
     document.getElementById('reg_pc').innerHTML = pc;
     document.getElementById('reg_sp').innerHTML = sp;
+    document.getElementById('reg_op').innerHTML = op;
   },
   
+  dbgtrace: function() {
+    var a = Z80._r.a.toString(16); if(a.length==1) a='0'+a;
+    var b = Z80._r.b.toString(16); if(b.length==1) b='0'+b;
+    var c = Z80._r.c.toString(16); if(c.length==1) c='0'+c;
+    var d = Z80._r.d.toString(16); if(d.length==1) d='0'+d;
+    var e = Z80._r.e.toString(16); if(e.length==1) e='0'+e;
+    var f = Z80._r.f.toString(16); if(f.length==1) f='0'+f;
+    var h = Z80._r.h.toString(16); if(h.length==1) h='0'+h;
+    var l = Z80._r.l.toString(16); if(l.length==1) l='0'+l;
+    var pc = Z80._r.pc.toString(16); if(pc.length<4) { p=''; for(i=4;i>pc.length;i--) p+='0'; pc=p+pc; }
+    var sp = Z80._r.sp.toString(16); if(sp.length<4) { p=''; for(i=4;i>sp.length;i--) p+='0'; sp=p+sp; }
+    jsGB.trace +=
+      ("A"+a+"/B"+b+"/C"+c+"/D"+d+"/E"+e+"/F"+f+"/H"+h+"/L"+l+"/PC"+pc+"/SP"+sp+"\n");
+  },
+
   step: function() {
     if(Z80._r.ime && MMU._ie && MMU._if)
     {
