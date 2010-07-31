@@ -29,6 +29,7 @@ MMU = {
   reset: function() {
     for(i=0; i<8192; i++) {
       MMU._wram[i] = 0;
+      MMU._eram[i] = 0;
     }
     for(i=0; i<127; i++) {
       MMU._zram[i] = 0;
@@ -173,6 +174,7 @@ MMU = {
           // OAM
 	  case 0xE00:
 	    if((addr&0xFF)<0xA0) GPU._oam[addr&0xFF] = val;
+	    GPU.updateoam(addr,val);
 	    break;
 
           // Zeropage RAM, I/O, interrupts

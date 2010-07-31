@@ -103,12 +103,14 @@ jsGB = {
         jsGB.pause();
         break;
       }
+      if(Z80._r.sp<0) { jsGB.pause(); break; }
     } while(Z80._clock.t < fclock);
   },
   
   reset: function() {
     LOG.reset(); GPU.reset(); MMU.reset(); Z80.reset(); KEY.reset();
-    MMU.load('tests/ttt.gb');
+    //Z80._r.pc=0x100;MMU._inbios=0;Z80._r.sp=0xFFFE;Z80._r.hl=0x014D;Z80._r.c=0x13;Z80._r.e=0xD8;Z80._r.a=1;
+    MMU.load('tests/opus5.gb');
   
     document.getElementById('op_reset').onclick=jsGB.reset;
     document.getElementById('op_run').onclick=jsGB.run;
@@ -139,7 +141,7 @@ jsGB = {
 
     //XHR.connect('/log.php', {trace:jsGB.trace}, {success:function(x){}});
   },
-  
+
   dbgupdate: function() {
     var p; var i;
     var a = Z80._r.a.toString(16); if(a.length==1) a='0'+a;
