@@ -17,7 +17,7 @@ Z80 = {
     a:0, b:0, c:0, d:0, e:0, h:0, l:0, f:0
   },
 
-  _clock: {m:0, t:0},
+  _clock: {m:0},
 
   _halt: 0,
   _stop: 0,
@@ -27,7 +27,7 @@ Z80 = {
     Z80._r.sp=0; Z80._r.pc=0; Z80._r.i=0; Z80._r.r=0;
     Z80._r.m=0;
     Z80._halt=0; Z80._stop=0;
-    Z80._clock.m=0; Z80._clock.t=0;
+    Z80._clock.m=0;
     Z80._r.ime=1;
     LOG.out('Z80', 'Reset.');
   },

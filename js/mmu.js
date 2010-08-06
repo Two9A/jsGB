@@ -111,6 +111,8 @@ MMU = {
 	        switch(addr&0xF)
 		{
 		  case 0: return KEY.rb();    // JOYP
+		  case 4: case 5: case 6: case 7:
+		  	return TIMER.rb(addr);
 		  case 15: return MMU._if;    // Interrupt flags
 		  default: return 0;
 		}
@@ -187,6 +189,7 @@ MMU = {
 	        switch(addr&0xF)
 		{
 		  case 0: KEY.wb(val); break;
+		  case 4: case 5: case 6: case 7: TIMER.wb(addr, val); break;
 		  case 15: MMU._if = val; break;
 		}
 	        break;

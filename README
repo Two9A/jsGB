@@ -12,9 +12,10 @@ Current status:
 - CPU: Emulated, including the CB-page opcodes. There are likely to be
   opcodes in the standard lists that are missing, and the "undocumented"
   ops will be missing.
-- Graphics: Background 1 emulated, sprites emulated, windows missing.
+- Graphics: Backgrounds and sprites emulated, windows missing.
 - Keypad: Working.
-- Interrupts, timers: VBlank interrupt emulated.
+- Timer: Untested.
+- Interrupts: VBlank and timer emulated.
 - Sound: Missing.
 
 Tested browsers:

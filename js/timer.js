@@ -32,10 +32,10 @@ TIMER = {
     var oldclk = TIMER._clock.main;
 
     TIMER._clock.sub += Z80._r.m;
-    if(TIMER._clock.sub > 15)
+    if(TIMER._clock.sub > 3)
     {
       TIMER._clock.main++;
-      TIMER._clock.sub -= 16;
+      TIMER._clock.sub -= 4;
 
       TIMER._clock.div++;
       if(TIMER._clock.div==16)

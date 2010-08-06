@@ -6,6 +6,7 @@
   <script type="text/javascript" src="js/gpu.js"></script>
   <script type="text/javascript" src="js/mmu.js"></script>
   <script type="text/javascript" src="js/key.js"></script>
+  <script type="text/javascript" src="js/timer.js"></script>
   <script type="text/javascript" src="js/z80.js"></script>
   <script type="text/javascript" src="js/tabs.js"></script>
   <script type="text/javascript" src="js/xhr.js"></script>
@@ -15,15 +16,19 @@ body { padding: 5px; background-color: black; color: white; font-family:Arial, H
 #out { height:144px; width:160px; border: 1px solid white; float:left; margin:0 5px 0 0; }
 #msg { margin: 5px; font-family: sans-serif; font-size: 0.82em; }
 div.tab { height:124px; width:320px; border:1px solid white; margin:20px 5px 5px 165px; overflow:auto; }
-ul#ops { float:left; list-style:none inside; }
-ul#ops li { cursor:pointer; }
+ul.ops { float:left; list-style:none inside; }
+ul.ops li { cursor:pointer; }
 table#reg { font-size:11px; font-family:Lucida Console, Bitstream Vera Sans Mono, monospace; line-height:1em; }
 table#reg td.regname { text-align:right; }
 ul.tablist { list-style: none inside; position:relative; bottom:-1px; }
 ul.tablist li { display: block; float: left; background: #444; border-top: 1px solid #444; border-bottom: 1px solid white; padding: 3px 0.5em; margin-right: 2px; cursor: pointer; font-size:9px; }
 ul.tablist li.tab_hi { border-left: 1px solid white; border-right: 1px solid white; border-top: 1px solid white; border-bottom: 1px solid black; background: black; }
-p#op_brk { margin-left: 165px; }
-input#breakpoint { background:black; color:white; border:1px solid white; width:5em; }
+p#op_brk,p#op_load { margin-left: 165px; }
+input { background:black; color:white; border:1px solid white; width:5em; }
+input#file { width:12em; }
+div#tilectrl { float:left; margin:1em;}
+div#tilepixels { width:96px; height:96px; border:1px solid white; float:left; margin:1em; }
+div#tilepixels div { width:12px; height:12px; float:left; }
   </style>
  </head>
  <body>
@@ -54,70 +59,92 @@ input#breakpoint { background:black; color:white; border:1px solid white; width:
   <div class="tab" id="tab_memory">
   </div>
   <div class="tab" id="tab_tile">
+   <div id="tilectrl">
+    <input type="text" id="tilenum" value="0"><br>
+    <ul class="ops">
+     <li id="tileprev">Prev</li>
+     <li id="tilenext">Next</li>
+    </ul>
+   </div>
+   <div id="tilepixels"></div>
   </div>
-  <ul id="ops">
+  <ul class="ops">
    <li id="op_reset">Reset</li>
    <li id="op_run">Run</li>
    <li id="op_step">Step</li>
   </ul>
   <p id="op_brk">Break at <input type="text" id="breakpoint"></p>
+  <p id="op_load">Load <input type="text" id="file" value="/tests/tetris.gb"></p>
   <script type="text/javascript">
 jsGB = {
   run_interval: 0,
   trace: '',
 
   frame: function() {
-    var fclock = Z80._clock.t+70224;
+    var fclock = Z80._clock.m+17556;
     var brk = document.getElementById('breakpoint').value;
     do {
       if(Z80._r.ime && MMU._ie && MMU._if)
       {
         Z80._halt=0; Z80._r.ime=0;
-        if((MMU._ie&MMU._if)&1)
-        {
-          MMU._if &= 0xFE; Z80._ops.RST40();
-        }
+	var ifired = MMU._ie & MMU._if;
+        if(ifired&1) { MMU._if &= 0xFE; Z80._ops.RST40(); }
+        else if(ifired&2) { MMU._if &= 0xFD; Z80._ops.RST48(); }
+        else if(ifired&4) { MMU._if &= 0xFB; Z80._ops.RST50(); }
+        else if(ifired&8) { MMU._if &= 0xF7; Z80._ops.RST58(); }
+        else if(ifired&16) { MMU._if &= 0xEF; Z80._ops.RST60(); }
       }
+      else if(Z80._halt) Z80._r.m=1;
       else
       {
-        if(Z80._halt) { Z80._r.m=1; }
-        else
-        {
-          Z80._r.r = (Z80._r.r+1) & 127;
-          Z80._map[MMU.rb(Z80._r.pc++)]();
-          Z80._r.pc &= 65535;
-        }
+      //  Z80._r.r = (Z80._r.r+1) & 127;
+        Z80._map[MMU.rb(Z80._r.pc++)]();
+        Z80._r.pc &= 65535;
       }
       //jsGB.dbgtrace();
-      Z80._clock.m += Z80._r.m; Z80._clock.t += (Z80._r.m*4);
+      Z80._clock.m += Z80._r.m;
       GPU.checkline();
-      if(brk && parseInt(brk,16))
-      {
-        if(Z80._r.pc==parseInt(brk,16))
-	{
-	  Z80._stop = 1;
-	}
-      }
-      if(Z80._stop)
+      TIMER.inc();
+      if(Z80._stop || (brk && parseInt(brk,16)==Z80._r.pc))
       {
         jsGB.pause();
         break;
       }
-      if(Z80._r.sp<0) { jsGB.pause(); break; }
-    } while(Z80._clock.t < fclock);
+    } while(Z80._clock.m < fclock);
   },
   
   reset: function() {
-    LOG.reset(); GPU.reset(); MMU.reset(); Z80.reset(); KEY.reset();
-    //Z80._r.pc=0x100;MMU._inbios=0;Z80._r.sp=0xFFFE;Z80._r.hl=0x014D;Z80._r.c=0x13;Z80._r.e=0xD8;Z80._r.a=1;
-    MMU.load('tests/opus5.gb');
+    LOG.reset(); GPU.reset(); MMU.reset(); Z80.reset(); KEY.reset(); TIMER.reset();
+    Z80._r.pc=0x100;MMU._inbios=0;Z80._r.sp=0xFFFE;Z80._r.hl=0x014D;Z80._r.c=0x13;Z80._r.e=0xD8;Z80._r.a=1;
+    MMU.load(document.getElementById('file').value);
   
     document.getElementById('op_reset').onclick=jsGB.reset;
     document.getElementById('op_run').onclick=jsGB.run;
     document.getElementById('op_run').innerHTML='Run';
     document.getElementById('op_step').onclick=jsGB.step;
   
+    document.getElementById('tilepixels').innerHTML='';
+    var tp = document.createElement('div');
+    var x;
+    for(var i=0; i<64; i++)
+    {
+      document.getElementById('tilepixels').appendChild(tp);
+      tp = tp.cloneNode(false);
+    }
+    document.getElementById('tilenum').onupdate=jsGB.dbgtile();
+    document.getElementById('tileprev').onclick=function(){
+      var t=parseInt(document.getElementById('tilenum').value); t--; if(t<0) t=383;
+      document.getElementById('tilenum').value=t.toString();
+      jsGB.dbgtile();
+    };
+    document.getElementById('tilenext').onclick=function(){
+      var t=parseInt(document.getElementById('tilenum').value); t++; if(t>383) t=0;
+      document.getElementById('tilenum').value=t.toString();
+      jsGB.dbgtile();
+    };
+
     jsGB.dbgupdate();
+    jsGB.dbgtile();
     jsGB.trace = '';
     tabMagic.init();
   
@@ -180,6 +207,17 @@ jsGB = {
     var sp = Z80._r.sp.toString(16); if(sp.length<4) { p=''; for(i=4;i>sp.length;i--) p+='0'; sp=p+sp; }
     jsGB.trace +=
       ("A"+a+"/B"+b+"/C"+c+"/D"+d+"/E"+e+"/F"+f+"/H"+h+"/L"+l+"/PC"+pc+"/SP"+sp+"\n");
+  },
+
+  dbgtile: function() {
+    var tn = parseInt(document.getElementById('tilenum').value);
+    var t = GPU._tilemap[tn];
+    var c = ['#ffffff','#c0c0c0','#606060','#000000'];
+    var d = document.getElementById('tilepixels').getElementsByTagName('div');
+
+    for(var y=0;y<8;y++)
+      for(var x=0;x<8;x++)
+        d[y*8+x].style.backgroundColor=c[t[y][x]];
   },
 
   step: function() {
