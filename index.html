@@ -19,13 +19,13 @@ div.tab { height:124px; width:320px; border:1px solid white; margin:20px 5px 5px
 ul.ops { float:left; list-style:none inside; }
 ul.ops li { cursor:pointer; }
 table#reg { font-size:11px; font-family:Lucida Console, Bitstream Vera Sans Mono, monospace; line-height:1em; }
-table#reg td.regname { text-align:right; }
+table#reg td.regname { text-align:right; padding-left:1em; }
 ul.tablist { list-style: none inside; position:relative; bottom:-1px; }
 ul.tablist li { display: block; float: left; background: #444; border-top: 1px solid #444; border-bottom: 1px solid white; padding: 3px 0.5em; margin-right: 2px; cursor: pointer; font-size:9px; }
 ul.tablist li.tab_hi { border-left: 1px solid white; border-right: 1px solid white; border-top: 1px solid white; border-bottom: 1px solid black; background: black; }
-p#op_brk,p#op_load { margin-left: 165px; }
+p#op_load { margin-left: 165px; }
 input { background:black; color:white; border:1px solid white; width:5em; }
-input#file { width:12em; }
+input#file { width:10em; }
 div#tilectrl { float:left; margin:1em;}
 div#tilepixels { width:96px; height:96px; border:1px solid white; float:left; margin:1em; }
 div#tilepixels div { width:12px; height:12px; float:left; }
@@ -39,24 +39,52 @@ div#tilepixels div { width:12px; height:12px; float:left; }
   <ul class="tablist" id="tablist_debug">
    <li rel="tab_message">Messages</li>
    <li rel="tab_registers">Debugger</li>
-   <li rel="tab_memory">Memory View</li>
    <li rel="tab_tile">Tile View</li>
   </ul>
   <div class="tab" id="tab_message"><div id="msg"></div></div>
   <div class="tab" id="tab_registers">
    <table id="reg">
-    <tr><td class="regname">A</td><td id="reg_a"></td><td class="regname">OP</td><td id="reg_op"></td></tr>
-    <tr><td class="regname">B</td><td id="reg_b"></td></tr>
-    <tr><td class="regname">C</td><td id="reg_c"></td></tr>
-    <tr><td class="regname">D</td><td id="reg_d"></td></tr>
-    <tr><td class="regname">E</td><td id="reg_e"></td></tr>
-    <tr><td class="regname">HL</td><td id="reg_hl"></td></tr>
-    <tr><td class="regname">PC</td><td id="reg_pc"></td></tr>
-    <tr><td class="regname">SP</td><td id="reg_sp"></td></tr>
-    <tr><td class="regname">F</td><td id="reg_f"></td></tr>
+    <tr>
+     <td class="regname">A</td><td class="reg" rel="a"></td>
+     <td class="regname">LCDC</td><td class="io" rel="40"></td>
+     <td class="regname">JOYP</td><td class="io" rel="00"></td>
+    </tr>
+    <tr>
+     <td class="regname">B</td><td class="reg" rel="b"></td>
+     <td class="regname">STAT</td><td class="io" rel="41"></td>
+    </tr>
+    <tr>
+     <td class="regname">C</td><td class="reg" rel="c"></td>
+     <td class="regname">SCY</td><td class="io" rel="42"></td>
+     <td class="regname">DIV</td><td class="io" rel="04"></td>
+    </tr>
+    <tr>
+     <td class="regname">D</td><td class=reg" rel="d"></td>
+     <td class="regname">SCX</td><td class="io" rel="43"></td>
+     <td class="regname">TIMA</td><td class="io" rel="05"></td>
+    </tr>
+    <tr>
+     <td class="regname">E</td><td class="reg" rel="e"></td>
+     <td class="regname">LY</td><td class="io" rel="44"></td>
+     <td class="regname">TMA</td><td class="io" rel="06"></td>
+    </tr>
+    <tr>
+     <td class="regname">HL</td><td class="reg" rel="hl"></td>
+     <td class="regname">LYC</td><td class="io" rel="45"></td>
+     <td class="regname">TCA</td><td class="io" rel="07"></td>
+    </tr>
+    <tr>
+     <td class="regname">PC</td><td class="reg" rel="pc"></td>
+     <td class="regname">IE</td><td class="io" rel="ff"></td>
+    </tr>
+    <tr>
+     <td class="regname">SP</td><td class="reg" rel="sp"></td>
+     <td class="regname">IF</td><td class="io" rel="0f"></td>
+    </tr>
+    <tr>
+     <td class="regname">F</td><td class="reg" rel="f"></td>
+    </tr>
    </table>
-  </div>
-  <div class="tab" id="tab_memory">
   </div>
   <div class="tab" id="tab_tile">
    <div id="tilectrl">
@@ -73,8 +101,10 @@ div#tilepixels div { width:12px; height:12px; float:left; }
    <li id="op_run">Run</li>
    <li id="op_step">Step</li>
   </ul>
-  <p id="op_brk">Break at <input type="text" id="breakpoint"></p>
-  <p id="op_load">Load <input type="text" id="file" value="/tests/tetris.gb"></p>
+  <p id="op_load">
+   Load <input type="text" id="file" value="/tests/tetris.gb">
+   Break at <input type="text" id="breakpoint">
+  </p>
   <script type="text/javascript">
 jsGB = {
   run_interval: 0,
@@ -84,6 +114,13 @@ jsGB = {
     var fclock = Z80._clock.m+17556;
     var brk = document.getElementById('breakpoint').value;
     do {
+      if(Z80._halt) Z80._r.m=1;
+      else
+      {
+      //  Z80._r.r = (Z80._r.r+1) & 127;
+        Z80._map[MMU.rb(Z80._r.pc++)]();
+        Z80._r.pc &= 65535;
+      }
       if(Z80._r.ime && MMU._ie && MMU._if)
       {
         Z80._halt=0; Z80._r.ime=0;
@@ -93,19 +130,13 @@ jsGB = {
         else if(ifired&4) { MMU._if &= 0xFB; Z80._ops.RST50(); }
         else if(ifired&8) { MMU._if &= 0xF7; Z80._ops.RST58(); }
         else if(ifired&16) { MMU._if &= 0xEF; Z80._ops.RST60(); }
-      }
-      else if(Z80._halt) Z80._r.m=1;
-      else
-      {
-      //  Z80._r.r = (Z80._r.r+1) & 127;
-        Z80._map[MMU.rb(Z80._r.pc++)]();
-        Z80._r.pc &= 65535;
+	else { Z80._r.ime=1; }
       }
       //jsGB.dbgtrace();
       Z80._clock.m += Z80._r.m;
       GPU.checkline();
       TIMER.inc();
-      if(Z80._stop || (brk && parseInt(brk,16)==Z80._r.pc))
+      if((brk && parseInt(brk,16)==Z80._r.pc) || Z80._stop)
       {
         jsGB.pause();
         break;
@@ -147,6 +178,7 @@ jsGB = {
     jsGB.dbgtile();
     jsGB.trace = '';
     tabMagic.init();
+    jsGB.pause();
   
     LOG.out('MAIN', 'Reset.');
   },
@@ -170,28 +202,41 @@ jsGB = {
   },
 
   dbgupdate: function() {
-    var p; var i;
-    var a = Z80._r.a.toString(16); if(a.length==1) a='0'+a;
-    var b = Z80._r.b.toString(16); if(b.length==1) b='0'+b;
-    var c = Z80._r.c.toString(16); if(c.length==1) c='0'+c;
-    var d = Z80._r.d.toString(16); if(d.length==1) d='0'+d;
-    var e = Z80._r.e.toString(16); if(e.length==1) e='0'+e;
-    var f = Z80._r.f.toString(16); if(f.length==1) f='0'+f;
-    var hl = (Z80._r.h<<8)+Z80._r.l; hl=hl.toString(16); if(hl.length<4) { p=''; for(i=4;i>hl.length;i--) p+='0'; hl=p+hl; }
-    var pc = Z80._r.pc.toString(16); if(pc.length<4) { p=''; for(i=4;i>pc.length;i--) p+='0'; pc=p+pc; }
-    var sp = Z80._r.sp.toString(16); if(sp.length<4) { p=''; for(i=4;i>sp.length;i--) p+='0'; sp=p+sp; }
-    var op = MMU.rb(Z80._r.pc).toString(16); if(op.length==1) op='0'+op;
-  
-    document.getElementById('reg_a').innerHTML = a;
-    document.getElementById('reg_b').innerHTML = b;
-    document.getElementById('reg_c').innerHTML = c;
-    document.getElementById('reg_d').innerHTML = d;
-    document.getElementById('reg_e').innerHTML = e;
-    document.getElementById('reg_f').innerHTML = f;
-    document.getElementById('reg_hl').innerHTML = hl;
-    document.getElementById('reg_pc').innerHTML = pc;
-    document.getElementById('reg_sp').innerHTML = sp;
-    document.getElementById('reg_op').innerHTML = op;
+    var t = document.getElementById('reg').getElementsByTagName('td');
+    var x,j,k;
+    for(var i=0; i<t.length; i++)
+    {
+      if(t[i].className=='reg')
+      {
+        switch(t[i].getAttribute('rel'))
+	{
+	  case 'a': case 'b': case 'c': case 'd': case 'e':
+	    eval('x=Z80._r.'+t[i].getAttribute('rel')+'.toString(16);if(x.length==1)x="0"+x;');
+	    break;
+	  case 'pc': case 'sp':
+	    eval('x=Z80._r.'+t[i].getAttribute('rel')+'.toString(16);if(x.length<4){p="";for(j=4;j>x.length;j--)p+="0";x=p+x;}');
+	    break;
+	  case 'hl':
+	    k = (Z80._r.h<<8)+Z80._r.l;
+	    x = k.toString(16); if(x.length<4){p="";for(j=4;j>x.length;j--)p+="0";x=p+x;}
+	    break;
+	  case 'f':
+	    x = (Z80._r.f>>4).toString(2);if(x.length<4){p="";for(j=4;j>x.length;j--)p+="0";x=p+x;}
+	    break;
+	}
+	t[i].innerHTML = x;
+      }
+      else if(t[i].className=='io')
+      {
+        j = parseInt(t[i].getAttribute('rel'),16);
+	x = MMU.rb(0xFF00+j).toString(16);
+	if(typeof(x) != 'undefined')
+	{
+	  if(x.length==1) x='0'+x;
+	  t[i].innerHTML = x;
+	}
+      }
+    }
   },
   
   dbgtrace: function() {

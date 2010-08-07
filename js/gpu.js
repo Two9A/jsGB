@@ -176,7 +176,7 @@ GPU = {
               if(GPU._bgtilebase)
               {
 	        var tile = GPU._vram[mapbase+t];
-		if(tile<128) tile=383-tile;
+		if(tile<128) tile=256+tile;
                 var tilerow = GPU._tilemap[tile][y];
                 do
                 {
@@ -187,7 +187,7 @@ GPU = {
                   GPU._scrn.data[linebase+2] = pixel[2];
                   GPU._scrn.data[linebase+3] = pixel[3];
                   x++;
-                  if(x==8) { t=(t+1)&31; x=0; tile=GPU._vram[mapbase+t]; if(tile<128) tile=383-tile; tilerow = GPU._tilemap[tile][y]; }
+                  if(x==8) { t=(t+1)&31; x=0; tile=GPU._vram[mapbase+t]; if(tile<128) tile=256+tile; tilerow = GPU._tilemap[tile][y]; }
                   linebase+=4;
                 } while(--w);
               }
@@ -245,7 +245,7 @@ GPU = {
                       {
                         if(obj.x+x >=0 && obj.x+x < 160)
                         {
-                          if(tilerow[7-x] && (!obj.prio || !GPU._scanrow[x]))
+                          if(tilerow[7-x] && (obj.prio || !GPU._scanrow[x]))
                           {
                             pixel = pal[tilerow[7-x]];
                             GPU._scrn.data[linebase+0] = pixel[0];
@@ -263,7 +263,7 @@ GPU = {
                       {
                         if(obj.x+x >=0 && obj.x+x < 160)
                         {
-                          if(tilerow[x] && (!obj.prio || !GPU._scanrow[x]))
+                          if(tilerow[x] && (obj.prio || !GPU._scanrow[x]))
                           {
                             pixel = pal[tilerow[x]];
                             GPU._scrn.data[linebase+0] = pixel[0];

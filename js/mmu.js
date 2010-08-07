@@ -18,6 +18,12 @@ MMU = {
     0xF5, 0x06, 0x19, 0x78, 0x86, 0x23, 0x05, 0x20, 0xFB, 0x86, 0x20, 0xFE, 0x3E, 0x01, 0xE0, 0x50
   ],
   _rom: '',
+  _carttype: 0,
+  _mbc: [
+    {},
+    {rombank:0, rambank:0, ramon:0, mode:0}
+  ],
+
   _eram: [],
   _wram: [],
   _zram: [],
@@ -37,12 +43,19 @@ MMU = {
     MMU._inbios=1;
     MMU._ie=0;
     MMU._if=0;
+
+    MMU._carttype=0;
+    MMU._mbc[0] = {};
+    MMU._mbc[1] = {rombank:0, rambank:0, ramon:0, mode:0};
+
     LOG.out('MMU', 'Reset.');
   },
 
   load: function(file) {
     b=new BinFileReader(file);
     MMU._rom=b.readString(b.getFileSize(), 0);
+    MMU._carttype = MMU._rom.charCodeAt(0x0147);
+
     LOG.out('MMU', 'ROM loaded, '+MMU._rom.length+' bytes.');
   },
 
@@ -112,7 +125,7 @@ MMU = {
 		{
 		  case 0: return KEY.rb();    // JOYP
 		  case 4: case 5: case 6: case 7:
-		  	return TIMER.rb(addr);
+		    return TIMER.rb(addr);
 		  case 15: return MMU._if;    // Interrupt flags
 		  default: return 0;
 		}
@@ -142,7 +155,16 @@ MMU = {
         break;
 
       // ROM bank 1
-      case 0x4000: case 0x5000: case 0x6000: case 0x7000:
+      case 0x4000: case 0x5000:
+        break;
+
+      case 0x6000: case 0x7000:
+        switch(MMU._carttype)
+	{
+	  case 1:
+	    MMU._mbc[1].mode = val&1;
+	    break;
+	}
         break;
 
       // VRAM
