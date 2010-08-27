@@ -14,6 +14,7 @@ KEY = {
       case 0x00: return 0x00; break;
       case 0x10: return KEY._keys[0]; break;
       case 0x20: return KEY._keys[1]; break;
+      default: return 0x00; break;
     }
   },
 

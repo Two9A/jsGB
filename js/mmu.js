@@ -23,6 +23,8 @@ MMU = {
     {},
     {rombank:0, rambank:0, ramon:0, mode:0}
   ],
+  _romoffs: 0x4000,
+  _ramoffs: 0,
 
   _eram: [],
   _wram: [],
@@ -33,13 +35,10 @@ MMU = {
   _if: 0,
 
   reset: function() {
-    for(i=0; i<8192; i++) {
-      MMU._wram[i] = 0;
-      MMU._eram[i] = 0;
-    }
-    for(i=0; i<127; i++) {
-      MMU._zram[i] = 0;
-    }
+    for(i=0; i<8192; i++) MMU._wram[i] = 0;
+    for(i=0; i<32768; i++) MMU._eram[i] = 0;
+    for(i=0; i<127; i++) MMU._zram[i] = 0;
+
     MMU._inbios=1;
     MMU._ie=0;
     MMU._if=0;
@@ -47,6 +46,8 @@ MMU = {
     MMU._carttype=0;
     MMU._mbc[0] = {};
     MMU._mbc[1] = {rombank:0, rambank:0, ramon:0, mode:0};
+    MMU._romoffs=0x4000;
+    MMU._ramoffs=0;
 
     LOG.out('MMU', 'Reset.');
   },
@@ -85,7 +86,7 @@ MMU = {
 
       // ROM bank 1
       case 0x4000: case 0x5000: case 0x6000: case 0x7000:
-        return MMU._rom.charCodeAt(addr);
+        return MMU._rom.charCodeAt(MMU._romoffs+(addr&0x3FFF));
 
       // VRAM
       case 0x8000: case 0x9000:
@@ -93,7 +94,7 @@ MMU = {
 
       // External RAM
       case 0xA000: case 0xB000:
-        return MMU._eram[addr&0x1FFF];
+        return MMU._eram[MMU._ramoffs+(addr&0x1FFF)];
 
       // Work RAM and echo
       case 0xC000: case 0xD000: case 0xE000:
@@ -146,16 +147,48 @@ MMU = {
     switch(addr&0xF000)
     {
       // ROM bank 0
-      case 0x0000:
-        if(MMU._inbios && addr<0x0100) return;
-	// fall through
-      case 0x1000:
-      case 0x2000:
-      case 0x3000:
+      // MBC1: Turn external RAM on
+      case 0x0000: case 0x1000:
+        switch(MMU._carttype)
+	{
+	  case 1:
+	    MMU._mbc[1].ramon = ((val&0xF)==0xA)?1:0;
+	    break;
+	}
+	break;
+
+      // MBC1: ROM bank switch
+      case 0x2000: case 0x3000:
+        switch(MMU._carttype)
+	{
+	  case 1:
+	    MMU._mbc[1].rombank &= 0x60;
+	    val &= 0x1F;
+	    if(!val) val=1;
+	    MMU._mbc[1].rombank |= val;
+	    MMU._romoffs = MMU._mbc[1].rombank * 0x4000;
+	    break;
+	}
         break;
 
       // ROM bank 1
+      // MBC1: RAM bank switch
       case 0x4000: case 0x5000:
+        switch(MMU._carttype)
+	{
+	  case 1:
+	    if(MMU._mbc[1].mode)
+	    {
+	      MMU._mbc[1].rambank = (val&3);
+	      MMU._ramoffs = MMU._mbc[1].rambank * 0x2000;
+	    }
+	    else
+	    {
+	      MMU._mbc[1].rombank &= 0x1F;
+	      MMU._mbc[1].rombank |= ((val&3)<<5);
+	      MMU._romoffs = MMU._mbc[1].rombank * 0x4000;
+	    }
+	}
         break;
 
       case 0x6000: case 0x7000:
@@ -175,7 +208,7 @@ MMU = {
 
       // External RAM
       case 0xA000: case 0xB000:
-        MMU._eram[addr&0x1FFF] = val;
+        MMU._eram[MMU._ramoffs+(addr&0x1FFF)] = val;
 	break;
 
       // Work RAM and echo
